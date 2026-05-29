@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Asset Medic",
+  "name": "Medic-asset",
   "version": "0.1",
   "description": "Détecte les assets cassés et les ouvre dans VS Code",
   "permissions": [
