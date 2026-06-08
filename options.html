@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Configuration d'Asset Medic</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 30px;
+      background-color: #f4f7f6;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin: 0 auto;
+    }
+    h1 { font-size: 20px; color: #007acc; margin-top: 0; }
+    label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background-color: #007acc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: bold;
+    }
+    button:hover { background-color: #005999; }
+    #status {
+      margin-top: 15px;
+      text-align: center;
+      color: #28a745;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Configuration Asset Medic 🩺</h1>
+    <p>Configurez vos dossiers pour que l'extension sache où chercher sur votre ordinateur.</p>
+    
+    <form id="options-form">
+      <label for="domaine">Nom de domaine du site :</label>
+      <input type="text" id="domaine" placeholder="ex: https://lebonheurdespetitsguerriers.fr" required>
+
+      <label for="chemin">Chemin absolu du projet sur le Mac :</label>
+      <input type="text" id="chemin" placeholder="ex: /Users/julienchassin/Documents/LBPG" required>
+
+      <button type="submit">Sauvegarder les réglages</button>
+    </form>
+
+    <div id="status"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
