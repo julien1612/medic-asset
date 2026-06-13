@@ -1,79 +1,94 @@
-// 1. GESTION DU CLIC SUR L'ENGRENAGE (OUVRIR LES OPTIONS)
-document.getElementById('open-options').addEventListener('click', () => {
-  if (chrome.runtime.openOptionsPage) {
-    chrome.runtime.openOptionsPage(); // Méthode recommandée par Chrome
-  } else {
-    window.open(chrome.runtime.getURL('options.html')); // Secours
-  }
-});
+document.addEventListener('DOMContentLoaded', () => {
 
-// 2. GESTION DU CLIC SUR LE BOUTON BLEU (DÉTECTION + OUVERTURE VS CODE)
-document.getElementById('open-test').addEventListener('click', () => {
+  const btnOptions = document.getElementById('open-options');
+  const btnCss = document.getElementById('open-css');
+  const btnJs = document.getElementById('open-js');
+  const statusDiv = document.getElementById('affichage-links');
 
-  // ÉTAPE CHRONO : On va chercher les réglages de l'utilisateur dans la mémoire de Chrome
-  chrome.storage.local.get(['siteDomaine', 'siteChemin'], (reglages) => {
-    
-    // Sécurité : Si l'utilisateur n'a encore rien configuré, on stoppe et on le prévient
-    if (!reglages.siteDomaine || !reglages.siteChemin) {
-      document.getElementById('affichage-links').innerText = "⚠️ Configuration manquante. Cliquez sur ⚙️ pour configurer vos dossiers.";
-      return;
-    }
-
-    // Si on a les réglages, on récupère l'onglet actif du navigateur
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      let tabActif = tabs[0];
-      
-      // On injecte le script d'extraction dans la page web de l'onglet
-      chrome.scripting.executeScript({
-        target: { tabId: tabActif.id },
-        func: (domaineRecherche) => {
-          const balisesCSS = document.querySelectorAll('link[rel="stylesheet"]');
-          const listLinks = [];
-
-          // On nettoie un peu le domaine pour être sûr que l'extraction fonctionne (on vire le https:// pour le .includes)
-          let domaineNettoye = domaineRecherche.replace('https://', '').replace('/', '');
-
-          balisesCSS.forEach(link => {
-            if (link.href.includes(domaineNettoye)) {
-              listLinks.push(link.href);
-            }
-          });
-
-          return listLinks; // On renvoie le tableau à l'extension
-        },
-        args: [reglages.siteDomaine] // On envoie le domaine configuré dans la fonction de l'onglet
-      },
-      (results) => {
-        // CODE DE L'EXTENSION (Retour des résultats)
-        if (results && results[0]) {
-          let linksCSS = results[0].result;
-
-          // Ta fonction magique devenue 100% dynamique grâce à la mémoire !
-          function localPath(link) {
-            // 1. On remplace dynamiquement le domaine trouvé par le chemin du Mac de l'utilisateur (+ dossier public)
-            let cleanPath = link.replace(reglages.siteDomaine, reglages.siteChemin + '/public/');
-            
-            // 2. On nettoie toujours le hash de production (ex: app.e367814a.css devient app.css)
-            cleanPath = cleanPath.replace(/app\.[a-z0-9]+\.css/, 'app.css');
-            
-            return cleanPath;
-          }
-
-          if (linksCSS && linksCSS.length > 0) {
-            // 1. On génère l'URL propre pour VS Code
-            let urlVsCode = `vscode://file${localPath(linksCSS[0])}`;
-
-            // 2. Action ! On ouvre automatiquement le fichier dans VS Code
-            chrome.tabs.create({ url: urlVsCode });
-
-            // 3. On met à jour l'affichage du popup pour vérification
-            document.getElementById('affichage-links').innerText = "Lien généré : " + urlVsCode;
-          } else {
-            document.getElementById('affichage-links').innerText = "Aucun CSS local correspondant trouvé sur ce site.";
-          }
-        }
-      });
-
+  if (btnOptions) {
+    btnOptions.addEventListener('click', () => {
+      window.open(chrome.runtime.getURL('options.html'));
     });
-  });
+  }
+
+  function ouvrirAssetDansVsCode(typeAsset) {
+    chrome.storage.local.get(['siteDomaine', 'siteChemin'], (reglages) => {
+      
+      if (!reglages.siteDomaine || !reglages.siteChemin) {
+        statusDiv.innerText = "⚠️ Configuration manquante. Cliquez sur ⚙️.";
+        return;
+      }
+
+      let cheminMachine = reglages.siteChemin.trim();
+
+      // ALERTES COMMERCIALES / UNIVERSELLES
+      if (cheminMachine.startsWith('~')) {
+        statusDiv.innerText = "⚠️ Erreur : N'utilisez pas '~'. Écrivez le chemin complet (ex: /Users/...)";
+        return;
+      }
+
+      // Nettoyage générique du slash de fin pour Windows et Mac
+      if (cheminMachine.endsWith('/') || cheminMachine.endsWith('\\')) { 
+        cheminMachine = cheminMachine.slice(0, -1); 
+      }
+
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        let tabActif = tabs[0];
+        
+        if (!tabActif) {
+          statusDiv.innerText = "❌ Aucun onglet actif.";
+          return;
+        }
+
+        chrome.scripting.executeScript({
+          target: { tabId: tabActif.id },
+          func: (domaineRecherche) => {
+            let domaineNettoye = domaineRecherche.replace('https://', '').replace('http://', '').split(':')[0].split('/')[0];
+            const toutesLesRessources = performance.getEntriesByType('resource');
+            const listCSS = [];
+            toutesLesRessources.forEach(ressource => {
+              if (ressource.name.includes(domaineNettoye) && ressource.name.includes('.css')) {
+                listCSS.push(ressource.name);
+              }
+            });
+            return { css: listCSS };
+          },
+          args: [reglages.siteDomaine]
+        },
+        (results) => {
+          let finalPath = "";
+
+          if (results && results[0] && results[0].result && results[0].result.css.length > 0) {
+            let urlCssNavigateur = results[0].result.css[0].split('?')[0];
+            let urlCleanCss = urlCssNavigateur.replace(/app\.[a-z0-9]+\.css/, 'app.css');
+            let indexBuild = urlCleanCss.indexOf('/build/');
+            let relativePathCss = (indexBuild !== -1) ? '/public' + urlCleanCss.substring(indexBuild) : '/public' + urlCleanCss.substring(urlCleanCss.lastIndexOf('/'));
+            
+            finalPath = cheminMachine + relativePathCss;
+            if (typeAsset === 'js') {
+              finalPath = finalPath.replace('/app.css', '/app.js');
+            }
+          } else {
+            // Secours standard universel
+            finalPath = cheminMachine + (typeAsset === 'css' ? '/public/build/app.css' : '/public/build/app.js');
+          }
+
+          // Exécution de l'ouverture
+          try {
+            const targetLink = document.createElement('a');
+            targetLink.href = `vscode://file${finalPath}`;
+            document.body.appendChild(targetLink);
+            targetLink.click();
+            document.body.removeChild(targetLink);
+            statusDiv.innerText = `🚀 ${typeAsset.toUpperCase()} ouvert avec succès !`;
+          } catch (e) {
+            statusDiv.innerText = "❌ Erreur lors de l'ouverture.";
+          }
+        });
+      });
+    });
+  }
+
+  if (btnCss) btnCss.addEventListener('click', () => ouvrirAssetDansVsCode('css'));
+  if (btnJs) btnJs.addEventListener('click', () => ouvrirAssetDansVsCode('js'));
 });
