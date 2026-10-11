@@ -21,13 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let cheminMachine = reglages.siteChemin.trim();
 
-      // ALERTES COMMERCIALES / UNIVERSELLES
       if (cheminMachine.startsWith('~')) {
         statusDiv.innerText = "⚠️ Erreur : N'utilisez pas '~'. Écrivez le chemin complet (ex: /Users/...)";
         return;
       }
 
-      // Nettoyage générique du slash de fin pour Windows et Mac
       if (cheminMachine.endsWith('/') || cheminMachine.endsWith('\\')) { 
         cheminMachine = cheminMachine.slice(0, -1); 
       }
@@ -69,11 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
               finalPath = finalPath.replace('/app.css', '/app.js');
             }
           } else {
-            // Secours standard universel
             finalPath = cheminMachine + (typeAsset === 'css' ? '/public/build/app.css' : '/public/build/app.js');
           }
 
-          // Exécution de l'ouverture
           try {
             const targetLink = document.createElement('a');
             targetLink.href = `vscode://file${finalPath}`;
